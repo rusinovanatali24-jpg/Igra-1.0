@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Редактор игры - Охота за сокровищами</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #667eea, #764ba2); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .header { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 30px; text-align: center; border-radius: 20px 20px 0 0; }
+        .header h1 { font-size: 2em; margin-bottom: 10px; }
+        
+        .tabs { display: flex; background: #f5f5f5; border-bottom: 3px solid #ddd; }
+        .tab { flex: 1; padding: 20px; text-align: center; cursor: pointer; font-weight: bold; transition: all 0.3s; background: #f5f5f5; border: none; font-size: 1em; }
+        .tab:hover { background: #e8e8e8; }
+        .tab.active { background: white; color: #667eea; border-bottom: 3px solid #667eea; }
+        
+        .tab-content { padding: 40px; display: none; }
+        .tab-content.active { display: block; }
+        
+        .section { margin-bottom: 30px; padding: 25px; background: #f9f9f9; border-radius: 10px; border-left: 4px solid #667eea; }
+        .section-title { font-size: 1.5em; margin-bottom: 20px; color: #333; font-weight: bold; }
+        
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; font-size: 1em; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1em; font-family: inherit; }
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline: none; border-color: #667eea; }
+        
+        .theme-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .theme-card { padding: 25px; border: 3px solid #ddd; border-radius: 12px; text-align: center; cursor: pointer; transition: all 0.3s; background: white; }
+        .theme-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.15); }
+        .theme-card.selected { border-color: #667eea; background: #f0f4ff; box-shadow: 0 10px 25px rgba(102,126,234,0.3); }
+        .theme-icon { font-size: 4em; margin-bottom: 15px; }
+        .theme-name { font-size: 1.2em; font-weight: bold; color: #333; }
+        
+        .btn { padding: 15px 35px; border: none; border-radius: 10px; font-size: 1.1em; font-weight: bold; cursor: pointer; transition: all 0.3s; display: inline-block; margin: 5px; color: white; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
+        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); }
+        .btn-success { background: linear-gradient(135deg, #56ab2f, #a8e063); }
+        .btn-danger { background: linear-gradient(135deg, #eb3349, #f45c43); }
+        
+        .alert { padding: 20px; border-radius: 10px; margin-bottom: 25px; background: #d1ecf1; color: #0c5460; border-left: 5px solid #0c5460; font-size: 1.05em; }
+        
+        .question-item { background: white; border: 3px solid #ddd; border-radius: 12px; padding: 25px; margin-bottom: 25px; }
+        .question-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .question-number { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 10px 25px; border-radius: 25px; font-weight: bold; font-size: 1.1em; }
+        
+        .type-selector { display: flex; gap: 15px; margin-bottom: 20px; }
+        .type-option { flex: 1; padding: 15px; border: 3px solid #ddd; border-radius: 10px; text-align: center; cursor: pointer; transition: all 0.3s; font-weight: 600; background: white; }
+        .type-option:hover { background: #f5f5f5; }
+        .type-option.selected { border-color: #667eea; background: #f0f4ff; color: #667eea; }
+        
+        .answer-item { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding: 12px; background: #f9f9f9; border-radius: 8px; }
+        .answer-item input[type="text"] { flex: 1; }
+        .answer-item input[type="checkbox"], .answer-item input[type="radio"] { width: 22px; height: 22px; cursor: pointer; }
+        
+        .map-editor { position: relative; width: 100%; height: 550px; border: 5px solid #8b4513; border-radius: 15px; overflow: hidden; background-size: cover; background-position: center; margin: 20px 0; }
+        .map-editor.pirates { background: linear-gradient(135deg, rgba(212,165,116,0.9), rgba(196,154,108,0.9)); }
+        .map-editor.jungle { background: linear-gradient(135deg, rgba(168,213,186,0.9), rgba(124,179,66,0.9)); }
+        .map-editor.underwater { background: linear-gradient(135deg, rgba(179,229,252,0.9), rgba(79,195,247,0.9)); }
+        .map-editor.space { background: linear-gradient(135deg, rgba(15,52,96,0.95), rgba(26,26,46,0.95)); }
+        .map-editor.city { background: linear-gradient(135deg, rgba(224,224,224,0.95), rgba(189,189,189,0.95)); }
+        
+        .map-point { 
+            position: absolute; 
+            font-size: 50px; 
+            cursor: move; 
+            transform: translate(-50%, -100%); 
+            user-select: none; 
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4));
+        }
+        .point-label { position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); background: white; color: #667eea; border: 3px solid #667eea; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; }
+        
+        .preview-frame { width: 100%; height: 600px; border: 4px solid #667eea; border-radius: 12px; background: white; overflow: auto; margin: 20px 0; }
+        .code-block { background: #2d2d2d; color: #f8f8f2; padding: 25px; border-radius: 10px; font-family: 'Courier New', monospace; font-size: 0.95em; overflow-x: auto; margin: 20px 0; white-space: pre-wrap; word-wrap: break-word; }
+        
+        .upload-area { border: 4px dashed #ddd; border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; margin: 25px 0; background: white; transition: all 0.3s; }
+        .upload-area:hover { border-color: #667eea; background: #f9f9ff; }
+        .upload-icon { font-size: 4em; margin-bottom: 15px; color: #667eea; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗺️ Редактор игры "Охота за сокровищами" 💎</h1>
+            <p style="font-size: 1.1em; margin-top: 10px;">Создайте увлекательную образовательную игру для детей</p>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" id="btn0">🎨 Настройки</button>
+            <button class="tab" id="btn1">❓ Вопросы</button>
+            <button class="tab" id="btn2">🗺️ Карта</button>
+            <button class="tab" id="btn3">👁️ Превью</button>
+        </div>
+        
+        <div class="tab-content active" id="tab0">
+            <div class="section">
+                <div class="section-title">🎨 Выберите стиль игры</div>
+                <div class="theme-grid" id="themeSelector">
+                    <div class="theme-card selected" data-theme="pirates">
+                        <div class="theme-icon">🏴‍☠️</div>
+                        <div class="theme-name">Пираты</div>
+                    </div>
+                    <div class="theme-card" data-theme="jungle">
+                        <div class="theme-icon">🌴</div>
+                        <div class="theme-name">Джунгли</div>
+                    </div>
+                    <div class="theme-card" data-theme="underwater">
+                        <div class="theme-icon">🐠</div>
+                        <div class="theme-name">Подводный мир</div>
+                    </div>
+                    <div class="theme-card" data-theme="space">
+                        <div class="theme-icon">🚀</div>
+                        <div class="theme-name">Космос</div>
+                    </div>
+                    <div class="theme-card" data-theme="city">
+                        <div class="theme-icon">🏙️</div>
+                        <div class="theme-name">Город</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">⚙️ Параметры игры</div>
+                
+                <div class="form-group">
+                    <label>🎯 Количество попыток на вопрос</label>
+                    <input type="number" id="attempts" value="3" min="1" max="10">
+                </div>
+                
+                <div class="form-group">
+                    <label>⏱️ Таймер на вопрос (секунды, 0 = без ограничения)</label>
+                    <input type="number" id="timer" value="0" min="0" max="300">
+                </div>
+                
+                <div class="form-group">
+                    <label>⭐ Баллов за правильный ответ</label>
+                    <input type="number" id="points" value="10" min="1" max="100">
+                </div>
+                
+                <div class="form-group">
+                    <label>💡 Количество доступных подсказок</label>
+                    <input type="number" id="hints" value="3" min="0" max="10">
+                </div>
+                
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" id="showAnswer" checked style="width: 24px; height: 24px; margin-right: 12px; cursor: pointer;">
+                        <span style="font-size: 1.1em;">✅ Показывать правильный ответ после ошибки</span>
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label>🏆 Финальная награда (что получит победитель)</label>
+                    <select id="reward">
+                        <option value="Сундук с сокровищами">💰 Сундук с сокровищами</option>
+                        <option value="Золотой кубок" selected>🏆 Золотой кубок</option>
+                        <option value="Бриллиант">💎 Бриллиант</option>
+                        <option value="Золотая медаль">🥇 Золотая медаль</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>📜 Финальное сообщение победителю</label>
+                    <textarea id="message" rows="3" placeholder="Поздравление для победителя...">Поздравляем! Ты прошел все испытания и нашел сокровище! 🎉</textarea>
+                </div>
+                
+                <button class="btn btn-primary" id="saveBtn">💾 Сохранить настройки</button>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="tab1">
+            <div class="section">
+                <div class="section-title">❓ Создайте вопросы для игры</div>
+                
+                <div class="alert">
+                    💡 <strong>Совет:</strong> Создайте интересные вопросы с несколькими вариантами ответов. 
+                    Отметьте правильные ответы галочкой или радиокнопкой.
+                </div>
+                
+                <div id="questionsList">
+                    <div style="text-align: center; padding: 60px; color: #666;">
+                        <div style="font-size: 5em; margin-bottom: 20px;">📝</div>
+                        <h2 style="margin-bottom: 15px;">Вопросов пока нет</h2>
+                        <p style="font-size: 1.1em;">Нажмите кнопку "Добавить вопрос" чтобы начать</p>
+                    </div>
+                </div>
+                
+                <button class="btn btn-success" id="addQuestionBtn">➕ Добавить вопрос</button>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="tab2">
+            <div class="section">
+                <div class="section-title">🗺️ Настройте игровую карту</div>
+                
+                <div class="alert">
+                    🎯 <strong>Инструкция:</strong> Выберите готовый шаблон карты или загрузите свое изображение. 
+                    Затем перетаскивайте маркеры вопросов в нужные места на карте.
+                </div>
+                
+                <h3 style="margin-bottom: 15px; font-size: 1.3em;">Выберите шаблон карты:</h3>
+                <div class="theme-grid" id="mapSelector">
+                    <div class="theme-card selected" data-map="pirates">
+                        <div class="theme-icon">🏴‍☠️</div>
+                        <div class="theme-name">Пираты</div>
+                    </div>
+                    <div class="theme-card" data-map="jungle">
+                        <div class="theme-icon">🌴</div>
+                        <div class="theme-name">Джунгли</div>
+                    </div>
+                    <div class="theme-card" data-map="underwater">
+                        <div class="theme-icon">🐠</div>
+                        <div class="theme-name">Подводный мир</div>
+                    </div>
+                    <div class="theme-card" data-map="space">
+                        <div class="theme-icon">🚀</div>
+                        <div class="theme-name">Космос</div>
+                    </div>
+                    <div class="theme-card" data-map="city">
+                        <div class="theme-icon">🏙️</div>
+                        <div class="theme-name">Город</div>
+                    </div>
+                    <div class="theme-card" data-map="custom">
+                        <div class="theme-icon">📤</div>
+                        <div class="theme-name">Своя карта</div>
+                    </div>
+                </div>
+                
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📤</div>
+                    <div style="font-size: 1.3em; font-weight: bold; color: #667eea; margin-bottom: 10px;">
+                        Загрузить свое изображение
+                    </div>
+                    <div style="color: #666; font-size: 1.05em;">
+                        Нажмите или перетащите файл сюда (JPG, PNG, до 5 МБ)
+                    </div>
+                    <input type="file" id="mapFile" accept="image/*" style="display: none;">
+                </div>
+                
+                <h3 style="margin: 30px 0 15px; font-size: 1.3em;">Предварительный просмотр карты:</h3>
+                <div class="map-editor pirates" id="mapEditor"></div>
+                
+                <div class="alert" style="margin-top: 25px;">
+                    ⚠️ <strong>Как использовать:</strong> Перетаскивайте маркеры 📍 на карте мышкой, чтобы разместить вопросы в нужных местах
+                </div>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="tab3">
+            <div class="section">
+                <div class="section-title">👁️ Предварительный просмотр и публикация</div>
+                
+                <div class="alert">
+                    🚀 <strong>Готово к публикации!</strong> Посмотрите как будет выглядеть ваша игра 
+                    и получите код для встраивания в презентацию Genially
+                </div>
+                
+                <div style="margin-bottom: 25px;">
+                    <button class="btn btn-primary" id="previewBtn">👁️ Обновить превью</button>
+                    <button class="btn btn-success" id="generateBtn">📋 Сгенерировать код для Genially</button>
+                    <button class="btn btn-primary" id="downloadBtn">💾 Скачать HTML файл</button>
+                </div>
+                
+                <h3 style="margin-bottom: 15px; font-size: 1.3em;">Превью игры:</h3>
+                <div class="preview-frame" id="previewFrame">
+                    <div style="padding: 60px; text-align: center; color: #666;">
+                        <div style="font-size: 5em; margin-bottom: 25px;">🎮</div>
+                        <h2 style="font-size: 2em; margin-bottom: 15px;">Нажмите "Обновить превью"</h2>
+                        <p style="font-size: 1.2em;">Здесь будет отображаться ваша игра так, как её увидят дети</p>
+                    </div>
+                </div>
+                
+                <h3 style="margin: 30px 0 15px; font-size: 1.3em;">Код для вставки в Genially:</h3>
+                <div class="alert">
+                    ℹ️ <strong>Инструкция по использованию:</strong><br>
+                    1. Нажмите "Сгенерировать код для Genially"<br>
+                    2. Скопируйте код ниже<br>
+                    3. В Genially добавьте элемент "HTML"<br>
+                    4. Вставьте скопированный код<br>
+                    5. Готово! Игра будет работать прямо в презентации
+                </div>
+                
+                <div class="code-block" id="iframeCode">Нажмите кнопку "Сгенерировать код для Genially" чтобы получить код для встраивания</div>
+                
+                <button class="btn btn-primary" id="copyBtn">📋 Копировать код в буфер обмена</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        var gameData = {
+            theme: 'pirates',
+            selectedMap: 'pirates',
+            customMapUrl: null,
+            questions: [],
+            mapPoints: [],
+            attempts: 3,
+            timer: 0,
+            points: 10,
+            hints: 3,
+            showAnswer: true,
+            reward: 'Золотой кубок',
+            message: 'Поздравляем! Ты прошел все испытания и нашел сокровище!'
+        };
+        
+        // Переключение вкладок
+        var tabs = document.querySelectorAll('.tab');
+        var tabContents = document.querySelectorAll('.tab-content');
+        
+        tabs.forEach(function(tab, index) {
+            tab.addEventListener('click', function() {
+                tabs.forEach(function(t) { t.classList.remove('active'); });
+                tabContents.forEach(function(c) { c.classList.remove('active'); });
+                
+                tab.classList.add('active');
+                document.getElementById('tab' + index).classList.add('active');
+                
+                if (index === 2) {
+                    renderMapPoints();
+                }
+            });
+        });
+        
+        // Выбор темы
+        var themeCards = document.querySelectorAll('#themeSelector .theme-card');
+        themeCards.forEach(function(card) {
+            card.addEventListener('click', function() {
+                themeCards.forEach(function(c) { c.classList.remove('selected'); });
+                card.classList.add('selected');
+                gameData.theme = card.getAttribute('data-theme');
+                saveToLocalStorage();
+            });
+        });
+        
+        // Выбор карты
+        var mapCards = document.querySelectorAll('#mapSelector .theme-card');
+        mapCards.forEach(function(card) {
+            card.addEventListener('click', function() {
+                mapCards.forEach(function(c) { c.classList.remove('selected'); });
+                card.classList.add('selected');
+                gameData.selectedMap = card.getAttribute('data-map');
+                updateMapTheme();
+                saveToLocalStorage();
+            });
+        });
+        
+        // Обновление темы карты
+        function updateMapTheme() {
+            var mapEditor = document.getElementById('mapEditor');
+            mapEditor.className = 'map-editor ' + gameData.selectedMap;
+            
+            if (gameData.selectedMap === 'custom' && gameData.customMapUrl) {
+                mapEditor.style.backgroundImage = 'url(' + gameData.customMapUrl + ')';
+            } else {
+                mapEditor.style.backgroundImage = '';
+            }
+        }
+        
+        // Загрузка своей карты
+        document.getElementById('uploadArea').addEventListener('click', function() {
+            document.getElementById('mapFile').click();
+        });
+        
+        document.getElementById('mapFile').addEventListener('change', function(e) {
+            var file = e.target.files[0];
+            if (!file) return;
+            
+            var reader = new FileReader();
+            reader.onload = function(event) {
+                gameData.customMapUrl = event.target.result;
+                gameData.selectedMap = 'custom';
+                
+                mapCards.forEach(function(c) { c.classList.remove('selected'); });
+                document.querySelector('[data-map="custom"]').classList.add('selected');
+                
+                updateMapTheme();
+                saveToLocalStorage();
+            };
+            reader.readAsDataURL(file);
+        });
+        
+        // Добавление вопроса
+        document.getElementById('addQuestionBtn').addEventListener('click', function() {
+            var newQuestion = {
+                id: Date.now(),
+                type: 'single',
+                text: '',
+                answers: [
+                    {id: Date.now() + 1, text: '', correct: false},
+                    {id: Date.now() + 2, text: '', correct: false}
+                ],
+                hint: ''
+            };
+            
+            gameData.questions.push(newQuestion);
+            gameData.mapPoints.push({
+                questionId: newQuestion.id,
+                x: 50,
+                y: 50
+            });
+            
+            renderQuestions();
+            saveToLocalStorage();
+        });
+        
+        // Отрисовка вопросов
+        function renderQuestions() {
+            var container = document.getElementById('questionsList');
+            
+            if (gameData.questions.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 60px; color: #666;"><div style="font-size: 5em; margin-bottom: 20px;">📝</div><h2 style="margin-bottom: 15px;">Вопросов пока нет</h2><p style="font-size: 1.1em;">Нажмите кнопку "Добавить вопрос" чтобы начать</p></div>';
+                return;
+            }
+            
+            var html = '';
+            gameData.questions.forEach(function(q, i) {
+                html += '<div class="question-item">';
+                html += '<div class="question-header">';
+                html += '<div class="question-number">📍 Вопрос ' + (i + 1) + '</div>';
+                html += '<button class="btn btn-danger" onclick="deleteQuestion(' + q.id + ')">🗑️ Удалить</button>';
+                html += '</div>';
+                
+                html += '<div class="type-selector">';
+                html += '<div class="type-option ' + (q.type === 'single' ? 'selected' : '') + '" onclick="changeQuestionType(' + q.id + ', \'single\')">◉ Одиночный выбор</div>';
+                html += '<div class="type-option ' + (q.type === 'multiple' ? 'selected' : '') + '" onclick="changeQuestionType(' + q.id + ', \'multiple\')">☑ Множественный выбор</div>';
+                html += '<div class="type-option ' + (q.type === 'text' ? 'selected' : '') + '" onclick="changeQuestionType(' + q.id + ', \'text\')">✏️ Вписать ответ</div>';
+                html += '</div>';
+                
+                html += '<div class="form-group">';
+                html += '<label>Текст вопроса:</label>';
+                html += '<input type="text" value="' + q.text + '" onchange="updateQuestionText(' + q.id + ', this.value)" placeholder="Введите текст вопроса...">';
+                html += '</div>';
+                
+                if (q.type === 'text') {
+                    html += '<div class="form-group">';
+                    html += '<label>Правильный ответ (текст, который должен ввести игрок):</label>';
+                    html += '<input type="text" value="' + (q.correctText || '') + '" onchange="updateCorrectText(' + q.id + ', this.value)" placeholder="Введите правильный ответ...">';
+                    html += '</div>';
+                } else {
+                    html += '<div class="form-group"><label>Варианты ответа:</label>';
+                    q.answers.forEach(function(a) {
+                        html += '<div class="answer-item">';
+                        html += '<input type="' + (q.type === 'single' ? 'radio' : 'checkbox') + '" ';
+                        html += (a.correct ? 'checked' : '') + ' onchange="toggleAnswerCorrect(' + q.id + ', ' + a.id + ')" name="correct_' + q.id + '">';
+                        html += '<input type="text" value="' + a.text + '" onchange="updateAnswerText(' + q.id + ', ' + a.id + ', this.value)" placeholder="Вариант ответа...">';
+                        html += '<button class="btn btn-danger" onclick="deleteAnswer(' + q.id + ', ' + a.id + ')">❌</button>';
+                        html += '</div>';
+                    });
+                    html += '<button class="btn btn-success" onclick="addAnswer(' + q.id + ')">➕ Добавить вариант</button>';
+                    html += '</div>';
+                }
+                
+                html += '<div class="form-group">';
+                html += '<label>💡 Подсказка (необязательно):</label>';
+                html += '<input type="text" value="' + q.hint + '" onchange="updateQuestionHint(' + q.id + ', this.value)" placeholder="Подсказка для игрока...">';
+                html += '</div>';
+                
+                html += '</div>';
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        // Функции для работы с вопросами
+        function deleteQuestion(id) {
+            if (!confirm('Удалить этот вопрос?')) return;
+            gameData.questions = gameData.questions.filter(function(q) { return q.id !== id; });
+            gameData.mapPoints = gameData.mapPoints.filter(function(p) { return p.questionId !== id; });
+            renderQuestions();
+            saveToLocalStorage();
+        }
+        
+        function changeQuestionType(id, type) {
+            var q = gameData.questions.find(function(q) { return q.id === id; });
+            if (q) {
+                q.type = type;
+                if (type === 'single') {
+                    var foundCorrect = false;
+                    q.answers.forEach(function(a) {
+                        if (a.correct && foundCorrect) a.correct = false;
+                        if (a.correct) foundCorrect = true;
+                    });
+                }
+                renderQuestions();
+                saveToLocalStorage();
+            }
+        }
+        
+        function addAnswer(qid) {
+            var q = gameData.questions.find(function(q) { return q.id === qid; });
+            if (q) {
+                q.answers.push({id: Date.now(), text: '', correct: false});
+                renderQuestions();
+                saveToLocalStorage();
+            }
+        }
+        
+        function deleteAnswer(qid, aid) {
+            var q = gameData.questions.find(function(q) { return q.id === qid; });
+            if (q && q.answers.length > 2) {
+                q.answers = q.answers.filter(function(a) { return a.id !== aid; });
+                renderQuestions();
+                saveToLocalStorage();
+            } else {
+                alert('Должно быть минимум 2 варианта ответа!');
+            }
+        }
+        
+        function updateQuestionText(id, text) {
+            var q = gameData.questions.find(function(q) { return q.id === id; });
+            if (q) {
+                q.text = text;
+                saveToLocalStorage();
+            }
+        }
+        
+        function updateQuestionHint(id, hint) {
+            var q = gameData.questions.find(function(q) { return q.id === id; });
+            if (q) {
+                q.hint = hint;
+                saveToLocalStorage();
+            }
+        }
+        
+        function updateCorrectText(id, text) {
+            var q = gameData.questions.find(function(q) { return q.id === id; });
+            if (q) {
+                q.correctText = text;
+                saveToLocalStorage();
+            }
+        }
+        
+        function updateAnswerText(qid, aid, text) {
+            var q = gameData.questions.find(function(q) { return q.id === qid; });
+            if (q) {
+                var a = q.answers.find(function(a) { return a.id === aid; });
+                if (a) {
+                    a.text = text;
+                    saveToLocalStorage();
+                }
+            }
+        }
+        
+        function toggleAnswerCorrect(qid, aid) {
+            var q = gameData.questions.find(function(q) { return q.id === qid; });
+            if (q) {
+                var a = q.answers.find(function(a) { return a.id === aid; });
+                if (a) {
+                    if (q.type === 'single') {
+                        q.answers.forEach(function(a) { a.correct = false; });
+                    }
+                    a.correct = !a.correct;
+                    renderQuestions();
+                    saveToLocalStorage();
+                }
+            }
+        }
+        
+        // Отрисовка точек на карте
+        function renderMapPoints() {
+            var mapEditor = document.getElementById('mapEditor');
+            var existingPoints = mapEditor.querySelectorAll('.map-point');
+            existingPoints.forEach(function(p) { mapEditor.removeChild(p); });
+            
+            gameData.mapPoints.forEach(function(point, index) {
+                var pointEl = document.createElement('div');
+                pointEl.className = 'map-point';
+                pointEl.innerHTML = '📍<div class="point-label">' + (index + 1) + '</div>';
+                pointEl.style.left = point.x + '%';
+                pointEl.style.top = point.y + '%';
+                pointEl.style.color = '#ff0000';
+                
+                var isDragging = false;
+                
+                pointEl.addEventListener('mousedown', function(e) {
+                    isDragging = true;
+                    e.preventDefault();
+                });
+                
+                document.addEventListener('mousemove', function(e) {
+                    if (!isDragging) return;
+                    
+                    var rect = mapEditor.getBoundingClientRect();
+                    var x = ((e.clientX - rect.left) / rect.width) * 100;
+                    var y = ((e.clientY - rect.top) / rect.height) * 100;
+                    
+                    point.x = Math.max(0, Math.min(100, x));
+                    point.y = Math.max(0, Math.min(100, y));
+                    
+                    pointEl.style.left = point.x + '%';
+                    pointEl.style.top = point.y + '%';
+                });
+                
+                document.addEventListener('mouseup', function() {
+                    if (isDragging) {
+                        isDragging = false;
+                        saveToLocalStorage();
+                    }
+                });
+                
+                mapEditor.appendChild(pointEl);
+            });
+        }
+        
+        // Сохранение настроек
+        document.getElementById('saveBtn').addEventListener('click', function() {
+            gameData.attempts = parseInt(document.getElementById('attempts').value);
+            gameData.timer = parseInt(document.getElementById('timer').value);
+            gameData.points = parseInt(document.getElementById('points').value);
+            gameData.hints = parseInt(document.getElementById('hints').value);
+            gameData.showAnswer = document.getElementById('showAnswer').checked;
+            gameData.reward = document.getElementById('reward').value;
+            gameData.message = document.getElementById('message').value;
+            
+            saveToLocalStorage();
+            alert('✅ Настройки сохранены!');
+        });
+        
+        // Сохранение в localStorage
+        function saveToLocalStorage() {
+            localStorage.setItem('treasureHuntGame', JSON.stringify(gameData));
+        }
+        
+        // Загрузка из localStorage
+        function loadFromLocalStorage() {
+            var saved = localStorage.getItem('treasureHuntGame');
+            if (saved) {
+                gameData = JSON.parse(saved);
+                
+                document.getElementById('attempts').value = gameData.attempts;
+                document.getElementById('timer').value = gameData.timer;
+                document.getElementById('points').value = gameData.points;
+                document.getElementById('hints').value = gameData.hints;
+                document.getElementById('showAnswer').checked = gameData.showAnswer;
+                document.getElementById('reward').value = gameData.reward;
+                document.getElementById('message').value = gameData.message;
+                
+                // Восстанавливаем выбранную тему
+                themeCards.forEach(function(card) {
+                    if (card.getAttribute('data-theme') === gameData.theme) {
+                        card.classList.add('selected');
+                    } else {
+                        card.classList.remove('selected');
+                    }
+                });
+                
+                // Восстанавливаем выбранную карту
+                mapCards.forEach(function(card) {
+                    if (card.getAttribute('data-map') === gameData.selectedMap) {
+                        card.classList.add('selected');
+                    } else {
+                        card.classList.remove('selected');
+                    }
+                });
+                
+                renderQuestions();
+                updateMapTheme();
+            }
+        }
+        
+        // Инициализация
+        loadFromLocalStorage();
+        
+        // Функция превью
+        document.getElementById('previewBtn').addEventListener('click', function() {
+            if (gameData.questions.length === 0) {
+                alert('❌ Сначала добавьте хотя бы один вопрос!');
+                return;
+            }
+            
+            var themes = [
+                {id: 'pirates', name: 'Пираты', icon: '🏴‍☠️', color: '#8b4513'},
+                {id: 'jungle', name: 'Джунгли', icon: '🌴', color: '#2d5016'},
+                {id: 'underwater', name: 'Подводный мир', icon: '🐠', color: '#006994'},
+                {id: 'space', name: 'Космос', icon: '🚀', color: '#0f3460'},
+                {id: 'city', name: 'Город', icon: '🏙️', color: '#424242'}
+            ];
+            
+            var theme = themes.find(function(t) { return t.id === gameData.theme; });
+            var previewFrame = document.getElementById('previewFrame');
+            
+            var html = '<div style="padding: 40px; text-align: center; background: linear-gradient(135deg, ' + theme.color + ', #f0f0f0); min-height: 100%;">';
+            html += '<div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 20px; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">';
+            html += '<h1 style="color: ' + theme.color + '; font-size: 2.5em; margin-bottom: 20px;">' + theme.icon + ' Охота за сокровищами</h1>';
+            html += '<div style="text-align: left; margin-bottom: 30px; font-size: 1.1em;">';
+            html += '<p style="margin-bottom: 10px;"><strong>🎨 Тема:</strong> ' + theme.name + '</p>';
+            html += '<p style="margin-bottom: 10px;"><strong>❓ Вопросов:</strong> ' + gameData.questions.length + '</p>';
+            html += '<p style="margin-bottom: 10px;"><strong>⭐ Баллов за вопрос:</strong> ' + gameData.points + '</p>';
+            html += '<p style="margin-bottom: 10px;"><strong>💡 Подсказок:</strong> ' + gameData.hints + '</p>';
+            html += '<p style="margin-bottom: 10px;"><strong>🏆 Награда:</strong> ' + gameData.reward + '</p>';
+            html += '</div>';
+            html += '<button style="padding: 20px 60px; font-size: 1.3em; background: ' + theme.color + '; color: white; border: none; border-radius: 15px; cursor: pointer; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.2);">🎮 Начать игру</button>';
+            html += '<div style="margin-top: 30px; padding: 20px; background: #f9f9f9; border-radius: 10px; text-align: left;">';
+            html += '<h3 style="margin-bottom: 15px; color: #333;">📋 Примеры вопросов:</h3>';
+            
+            gameData.questions.slice(0, 3).forEach(function(q, i) {
+                html += '<div style="margin-bottom: 10px; padding: 10px; background: white; border-radius: 6px; border-left: 3px solid ' + theme.color + ';">';
+                html += '<strong>' + (i + 1) + '.</strong> ' + (q.text || 'Вопрос без текста') + '</div>';
+            });
+            
+            html += '</div></div></div>';
+            
+            previewFrame.innerHTML = html;
+        });
+        // Генерация кода для Genially
+        document.getElementById('generateBtn').addEventListener('click', function() {
+            if (gameData.questions.length === 0) {
+                alert('❌ Сначала добавьте хотя бы один вопрос!');
+                return;
+            }
+            
+            var gameHTML = generateGameHTML();
+            var base64HTML = btoa(unescape(encodeURIComponent(gameHTML)));
+            var iframeCode = '<iframe src="data:text/html;base64,' + base64HTML + '" width="100%" height="600" style="border: none; border-radius: 10px;"></iframe>';
+            
+            document.getElementById('iframeCode').textContent = iframeCode;
+            alert('✅ Код успешно сгенерирован! Скопируйте его и вставьте в элемент HTML в Genially.');
+        });
+        
+        function generateGameHTML() {
+            var themes = [
+                {id: 'pirates', name: 'Пираты', icon: '🏴‍☠️', color: '#8b4513'},
+                {id: 'jungle', name: 'Джунгли', icon: '🌴', color: '#2d5016'},
+                {id: 'underwater', name: 'Подводный мир', icon: '🐠', color: '#006994'},
+                {id: 'space', name: 'Космос', icon: '🚀', color: '#0f3460'},
+                {id: 'city', name: 'Город', icon: '🏙️', color: '#424242'}
+            ];
+            
+            var theme = themes.find(function(t) { return t.id === gameData.theme; });
+            
+            var html = '<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Охота за сокровищами</title>';
+            html += '<style>* {margin:0;padding:0;box-sizing:border-box;}';
+            html += 'body {font-family:Arial,sans-serif;background:linear-gradient(135deg,' + theme.color + ',#f0f0f0);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}';
+            html += '.container {max-width:800px;width:100%;background:white;border-radius:20px;padding:40px;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center;}';
+            html += 'h1 {color:' + theme.color + ';font-size:2em;margin-bottom:20px;}';
+            html += '.stats {display:flex;justify-content:space-around;margin:30px 0;flex-wrap:wrap;gap:15px;}';
+            html += '.stat-item {padding:15px 25px;background:#f9f9f9;border-radius:10px;border-left:4px solid ' + theme.color + ';}';
+            html += '.stat-item strong {display:block;font-size:1.8em;color:' + theme.color + ';margin-bottom:5px;}';
+            html += '.question-box {margin:30px 0;padding:30px;background:#f9f9f9;border-radius:15px;text-align:left;}';
+            html += '.question-text {font-size:1.4em;margin-bottom:20px;color:#333;font-weight:bold;}';
+            html += '.answer-option {padding:15px 20px;margin:10px 0;background:white;border:2px solid #ddd;border-radius:10px;cursor:pointer;transition:all 0.3s;}';
+            html += '.answer-option:hover {border-color:' + theme.color + ';background:#f0f4ff;}';
+            html += '.answer-option.selected {border-color:' + theme.color + ';background:#f0f4ff;}';
+            html += '.answer-option.correct {border-color:#28a745;background:#d4edda;}';
+            html += '.answer-option.wrong {border-color:#dc3545;background:#f8d7da;}';
+            html += '.text-input {width:100%;padding:15px;font-size:1.1em;border:2px solid #ddd;border-radius:10px;margin:10px 0;}';
+            html += '.btn {padding:15px 40px;font-size:1.2em;font-weight:bold;border:none;border-radius:10px;cursor:pointer;background:' + theme.color + ';color:white;margin:10px;}';
+            html += '.btn:hover {transform:translateY(-2px);box-shadow:0 5px 15px rgba(0,0,0,0.2);}';
+            html += '</style></head><body>';
+            html += '<div class="container" id="app"><h1>' + theme.icon + ' Охота за сокровищами</h1><div id="content"></div></div>';
+            html += '<script>';
+            html += 'var data=' + JSON.stringify(gameData) + ';';
+            html += 'var currentQ=0,score=0,selected=[];';
+            html += 'function start(){showQ();}';
+            html += 'function showQ(){if(currentQ>=data.questions.length){showFinal();return;}';
+            html += 'var q=data.questions[currentQ];';
+            html += 'var h="<div class=stats>";';
+            html += 'h+="<div class=stat-item><strong>"+(currentQ+1)+"/"+data.questions.length+"</strong><div>Вопрос</div></div>";';
+            html += 'h+="<div class=stat-item><strong>"+score+"</strong><div>Баллов</div></div>";';
+            html += 'h+="</div>";';
+            html += 'h+="<div class=question-box>";';
+            html += 'h+="<div class=question-text>"+q.text+"</div>";';
+            html += 'if(q.type==="text"){';
+            html += 'h+="<input type=text class=text-input id=textAnswer placeholder=\\"Введите ответ...\\">";';
+            html += '}else{';
+            html += 'for(var i=0;i<q.answers.length;i++){';
+            html += 'h+="<div class=answer-option onclick=selectAns("+i+")>"+q.answers[i].text+"</div>";';
+            html += '}';
+            html += '}';
+            html += 'h+="<button class=btn onclick=checkAns()>Проверить</button>";';
+            html += 'h+="</div>";';
+            html += 'document.getElementById("content").innerHTML=h;}';
+            html += 'function selectAns(i){var q=data.questions[currentQ];if(q.type==="single"){selected=[i];var opts=document.querySelectorAll(".answer-option");for(var j=0;j<opts.length;j++){opts[j].classList.remove("selected");}opts[i].classList.add("selected");}else{var idx=selected.indexOf(i);if(idx>-1){selected.splice(idx,1);document.querySelectorAll(".answer-option")[i].classList.remove("selected");}else{selected.push(i);document.querySelectorAll(".answer-option")[i].classList.add("selected");}}}';
+            html += 'function checkAns(){var q=data.questions[currentQ];var isCorrect=false;';
+            html += 'if(q.type==="text"){var userText=document.getElementById("textAnswer").value.trim().toLowerCase();var correctText=(q.correctText||"").trim().toLowerCase();isCorrect=userText===correctText;if(isCorrect){score+=data.points;alert("✅ Правильно!");}else{alert("❌ Неправильно! Правильный ответ: "+q.correctText);}currentQ++;selected=[];showQ();return;}';
+            html += 'if(selected.length===0){alert("Выберите ответ!");return;}';
+            html += 'var correct=[];for(var i=0;i<q.answers.length;i++){if(q.answers[i].correct)correct.push(i);}';
+            html += 'isCorrect=selected.length===correct.length&&selected.every(function(a){return correct.indexOf(a)!==-1;});';
+            html += 'var opts=document.querySelectorAll(".answer-option");';
+            html += 'if(isCorrect){score+=data.points;for(var i=0;i<selected.length;i++){opts[selected[i]].classList.add("correct");}}else{for(var i=0;i<selected.length;i++){opts[selected[i]].classList.add("wrong");}if(data.showAnswer){for(var i=0;i<correct.length;i++){opts[correct[i]].classList.add("correct");}}}';
+            html += 'setTimeout(function(){currentQ++;selected=[];showQ();},2000);}';
+            html += 'function showFinal(){var maxScore=data.questions.length*data.points;var percentage=(score/maxScore*100).toFixed(0);';
+            html += 'var h="<h1 style=\\"font-size:3em;margin-bottom:30px\\">🎉 Поздравляем!</h1>";';
+            html += 'h+="<p style=\\"font-size:1.3em;margin-bottom:30px\\">"+data.message+"</p>";';
+            html += 'h+="<div class=stats>";';
+            html += 'h+="<div class=stat-item><strong>"+score+"/"+maxScore+"</strong><div>Баллов</div></div>";';
+            html += 'h+="<div class=stat-item><strong>"+percentage+"%</strong><div>Правильно</div></div>";';
+            html += 'h+="</div>";';
+            html += 'h+="<div style=\\"font-size:6em;margin:30px 0\\">🏆</div>";';
+            html += 'h+="<h2 style=\\"color:' + theme.color + ';margin-bottom:20px\\">Награда: "+data.reward+"</h2>";';
+            html += 'h+="<button class=btn onclick=location.reload()>🔄 Играть снова</button>";';
+            html += 'document.getElementById("content").innerHTML=h;}';
+            html += 'start();<\/script></body></html>';
+            
+            return html;
+        }
+        // Скачивание HTML файла
+        document.getElementById('downloadBtn').addEventListener('click', function() {
+            if (gameData.questions.length === 0) {
+                alert('❌ Сначала добавьте хотя бы один вопрос!');
+                return;
+            }
+            
+            var gameHTML = generateGameHTML();
+            var blob = new Blob([gameHTML], {type: 'text/html;charset=utf-8'});
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'treasure-hunt-game.html';
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            alert('✅ Игра скачана! Откройте файл в браузере или загрузите на хостинг.');
+        });
+        // Копирование кода
+        document.getElementById('copyBtn').addEventListener('click', function() {
+            var code = document.getElementById('iframeCode').textContent;
+            
+            if (code.indexOf('Нажмите') !== -1) {
+                alert('❌ Сначала нажмите "Сгенерировать код для Genially"');
+                return;
+            }
+            
+            navigator.clipboard.writeText(code).then(function() {
+                alert('✅ Код скопирован в буфер обмена! Теперь вставьте его в элемент HTML в Genially.');
+            }).catch(function() {
+                alert('❌ Не удалось скопировать. Попробуйте выделить текст и скопировать вручную (Ctrl+C).');
+            });
+        });
+    </script>
+</body>
+</html>
